@@ -1,0 +1,53 @@
+{
+  "themes": {
+    "professional": {
+      "name": "Professional",
+      "description": "Clean, business-ready charts with muted colors",
+      "colors": ["#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#6A994E"],
+      "background": "#FFFFFF",
+      "grid_color": "#E0E0E0",
+      "grid_alpha": 0.3,
+      "font_family": "sans-serif",
+      "title_size": 16,
+      "label_size": 12,
+      "tick_size": 10
+    },
+    "minimal": {
+      "name": "Minimal",
+      "description": "Simple, distraction-free visualization",
+      "colors": ["#000000", "#404040", "#808080", "#A0A0A0", "#C0C0C0"],
+      "background": "#FFFFFF",
+      "grid_color": "#F0F0F0",
+      "grid_alpha": 0.5,
+      "font_family": "sans-serif",
+      "title_size": 14,
+      "label_size": 11,
+      "tick_size": 9
+    },
+    "vibrant": {
+      "name": "Vibrant",
+      "description": "Bold, eye-catching colors for presentations",
+      "colors": ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"],
+      "background": "#FFFFFF",
+      "grid_color": "#E8E8E8",
+      "grid_alpha": 0.4,
+      "font_family": "sans-serif",
+      "title_size": 16,
+      "label_size": 12,
+      "tick_size": 10
+    },
+    "academic": {
+      "name": "Academic",
+      "description": "Publication-ready scientific charts",
+      "colors": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"],
+      "background": "#FFFFFF",
+      "grid_color": "#D0D0D0",
+      "grid_alpha": 0.3,
+      "font_family": "serif",
+      "title_size": 14,
+      "label_size": 11,
+      "tick_size": 9
+    }
+  },
+  "default_theme": "professional"
+}
