@@ -32,12 +32,12 @@ export const uploadFile = async (file) => {
 };
 
 /**
- * Generate a chart from uploaded file.
- * @param {Object} chartRequest - Chart generation parameters
- * @returns {Promise} Response with base64 encoded chart
+ * Get Plotly-compatible chart data for client-side rendering.
+ * @param {Object} chartRequest - Chart data request parameters
+ * @returns {Promise} Response with Plotly traces and layout
  */
-export const generateChart = async (chartRequest) => {
-  const response = await api.post('/generate', chartRequest);
+export const getChartData = async (chartRequest) => {
+  const response = await api.post('/chart-data', chartRequest);
   return response.data;
 };
 
@@ -47,30 +47,6 @@ export const generateChart = async (chartRequest) => {
  */
 export const getThemes = async () => {
   const response = await api.get('/themes');
-  return response.data;
-};
-
-/**
- * Download chart directly from server.
- * @param {string} fileId - File ID
- * @param {Object} options - Chart options
- * @returns {Promise} Blob response
- */
-export const downloadChart = async (fileId, options) => {
-  const params = new URLSearchParams(options);
-  const response = await api.get(`/chart/${fileId}?${params}`, {
-    responseType: 'blob',
-  });
-  return response.data;
-};
-
-/**
- * Delete uploaded file and generated charts.
- * @param {string} fileId - File ID to delete
- * @returns {Promise} Response with deletion confirmation
- */
-export const cleanupFile = async (fileId) => {
-  const response = await api.delete(`/cleanup/${fileId}`);
   return response.data;
 };
 

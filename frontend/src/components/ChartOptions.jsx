@@ -2,9 +2,8 @@
  * ChartOptions component for selecting chart type, theme, and format.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Settings, Palette, Plus, X, ChevronDown } from 'lucide-react';
-import { getThemes } from '../services/api';
 
 function CollapsibleSection({ id, title, isOpen, onToggle, children }) {
   return (
@@ -23,25 +22,11 @@ function CollapsibleSection({ id, title, isOpen, onToggle, children }) {
   );
 }
 
-export default function ChartOptions({ options, onOptionsChange }) {
-  const [themes, setThemes] = useState(null);
+export default function ChartOptions({ options, onOptionsChange, themes, dataPreview }) {
   const [openSections, setOpenSections] = useState({});
 
   const toggleSection = (key) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  useEffect(() => {
-    loadThemes();
-  }, []);
-
-  const loadThemes = async () => {
-    try {
-      const themesData = await getThemes();
-      setThemes(themesData);
-    } catch (error) {
-      console.error('Failed to load themes:', error);
-    }
   };
 
   const handleChange = (field, value) => {
@@ -52,14 +37,9 @@ export default function ChartOptions({ options, onOptionsChange }) {
     { value: 'auto', label: 'Auto Detect' },
     { value: 'line', label: 'Line Chart' },
     { value: 'bar', label: 'Bar Chart' },
+    { value: 'horizontal_bar', label: 'Horizontal Bar Chart' },
     { value: 'scatter', label: 'Scatter Plot' },
     { value: 'pie', label: 'Pie Chart' },
-  ];
-
-  const formats = [
-    { value: 'png', label: 'PNG' },
-    { value: 'pdf', label: 'PDF' },
-    { value: 'svg', label: 'SVG' },
   ];
 
   return (
@@ -126,51 +106,6 @@ export default function ChartOptions({ options, onOptionsChange }) {
             <div className="text-sm text-gray-500">Loading themes...</div>
           )}
         </div>
-
-        {/* Format */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Export Format
-          </label>
-          <div className="flex space-x-2">
-            {formats.map((format) => (
-              <button
-                key={format.value}
-                onClick={() => handleChange('format', format.value)}
-                className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
-                  options.format === format.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                }`}
-              >
-                {format.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* DPI (for PNG) */}
-        {options.format === 'png' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Quality (DPI): {options.dpi}
-            </label>
-            <input
-              type="range"
-              min="150"
-              max="600"
-              step="50"
-              value={options.dpi}
-              onChange={(e) => handleChange('dpi', parseInt(e.target.value))}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>Low</span>
-              <span>Medium</span>
-              <span>High</span>
-            </div>
-          </div>
-        )}
 
         {/* Custom Title */}
         <CollapsibleSection id="title" title="Custom Title" isOpen={openSections.title} onToggle={toggleSection}>
@@ -239,7 +174,7 @@ export default function ChartOptions({ options, onOptionsChange }) {
 
         {/* Data Labels */}
         <CollapsibleSection id="dataLabels" title="Data Labels" isOpen={openSections.dataLabels} onToggle={toggleSection}>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-3">
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -247,18 +182,163 @@ export default function ChartOptions({ options, onOptionsChange }) {
                 onChange={(e) => handleChange('show_data_labels', e.target.checked)}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-600">Show values</span>
+              <span className="text-sm text-gray-600">Show values on chart</span>
             </label>
           </div>
           {options.show_data_labels && (
-            <input
-              type="text"
-              value={options.data_label_format}
-              onChange={(e) => handleChange('data_label_format', e.target.value)}
-              placeholder="Format (e.g. ,.0f for thousands)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Position</label>
+                <select
+                  value={options.data_label_position}
+                  onChange={(e) => handleChange('data_label_position', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="auto">Auto (smart)</option>
+                  <option value="above">Above point</option>
+                  <option value="below">Below point</option>
+                  <option value="center">Center (bars only)</option>
+                </select>
+              </div>
+              <p className="text-xs text-gray-400">
+                Tip: drag individual labels on the chart to fine-tune positions.
+              </p>
+            </div>
           )}
+        </CollapsibleSection>
+
+        {/* Ratings Mode — horizontal bar only */}
+        {options.chart_type === 'horizontal_bar' && (
+          <CollapsibleSection id="ratingsMode" title="Ratings Mode" isOpen={openSections.ratingsMode} onToggle={toggleSection}>
+            <div className="space-y-3">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={options.ratings_mode}
+                  onChange={(e) => handleChange('ratings_mode', e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">Enable Ratings Mode</span>
+              </label>
+              {options.ratings_mode && (
+                <p className="ml-6 text-xs text-gray-500">
+                  Bars are colored <span className="font-medium text-red-600">red</span> (≤3.15),{' '}
+                  <span className="font-medium text-yellow-600">yellow</span> (3.15–3.85),{' '}
+                  <span className="font-medium text-green-600">green</span> (&gt;3.85).
+                  Vertical reference lines are drawn at 3.15 and 3.85.
+                </p>
+              )}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* Trend Lines */}
+        <CollapsibleSection id="trendLine" title="Trend Lines" isOpen={openSections.trendLine} onToggle={toggleSection}>
+          <div className="space-y-4">
+            {/* Linear Trend */}
+            <div>
+              <label className="flex items-center space-x-2 cursor-pointer mb-2">
+                <input
+                  type="checkbox"
+                  checked={options.show_linear_trend}
+                  onChange={(e) => handleChange('show_linear_trend', e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">Linear trend (regression)</span>
+              </label>
+              {options.show_linear_trend && (
+                <div className="ml-6 space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Line style</label>
+                    <select
+                      value={options.linear_trend_linestyle}
+                      onChange={(e) => handleChange('linear_trend_linestyle', e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="dash">Dashed</option>
+                      <option value="solid">Solid</option>
+                      <option value="dot">Dotted</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Color</label>
+                      <input
+                        type="color"
+                        value={options.linear_trend_color || '#E74C3C'}
+                        onChange={(e) => handleChange('linear_trend_color', e.target.value)}
+                        className="w-full h-9 rounded border border-gray-300 cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Legend label</label>
+                      <input
+                        type="text"
+                        value={options.linear_trend_label}
+                        onChange={(e) => handleChange('linear_trend_label', e.target.value)}
+                        placeholder="Auto"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Mean Line */}
+            <div>
+              <label className="flex items-center space-x-2 cursor-pointer mb-2">
+                <input
+                  type="checkbox"
+                  checked={options.show_mean_line}
+                  onChange={(e) => handleChange('show_mean_line', e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">Mean line (average)</span>
+              </label>
+              {options.show_mean_line && (
+                <div className="ml-6 space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Line style</label>
+                    <select
+                      value={options.mean_line_linestyle}
+                      onChange={(e) => handleChange('mean_line_linestyle', e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="dash">Dashed</option>
+                      <option value="solid">Solid</option>
+                      <option value="dot">Dotted</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Color</label>
+                      <input
+                        type="color"
+                        value={options.mean_line_color || '#F39C12'}
+                        onChange={(e) => handleChange('mean_line_color', e.target.value)}
+                        className="w-full h-9 rounded border border-gray-300 cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Legend label</label>
+                      <input
+                        type="text"
+                        value={options.mean_line_label}
+                        onChange={(e) => handleChange('mean_line_label', e.target.value)}
+                        placeholder="Auto"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-gray-400">Applies to line, bar, and scatter charts. Both can be shown at once.</p>
+          </div>
         </CollapsibleSection>
 
         {/* Grid Controls */}
@@ -360,42 +440,216 @@ export default function ChartOptions({ options, onOptionsChange }) {
 
         {/* Custom Colors */}
         <CollapsibleSection id="colors" title="Custom Colors" isOpen={openSections.colors} onToggle={toggleSection}>
-          {options.colors.length === 0 && (
-            <p className="text-xs text-gray-500 mb-2">Using theme colors. Add colors to override.</p>
-          )}
-          <div className="space-y-2">
-            {options.colors.map((color, idx) => (
-              <div key={idx} className="flex items-center space-x-2">
-                <input
-                  type="color"
-                  value={color}
-                  onChange={(e) => {
-                    const newColors = [...options.colors];
-                    newColors[idx] = e.target.value;
-                    handleChange('colors', newColors);
-                  }}
-                  className="w-10 h-10 rounded border border-gray-300 cursor-pointer"
-                />
-                <span className="text-sm text-gray-600 font-mono">{color}</span>
+          {(() => {
+            const seriesNames = dataPreview?.columns?.slice(1) ?? [];
+            const themeColors = themes?.themes?.[options.theme]?.colors ?? [];
+            const getThemeColor = (i) => themeColors[i % Math.max(themeColors.length, 1)] || '#888888';
+
+            // Per-bar mode: single data series on a bar-type chart — color each bar individually
+            const isBarType = ['bar', 'horizontal_bar', 'auto'].includes(options.chart_type);
+            const barNames = seriesNames.length === 1 && isBarType
+              ? (dataPreview?.rows ?? []).map(r => String(r[0]))
+              : [];
+            const usePerBar = barNames.length > 0;
+
+            // Per-series mode: multiple data series
+            const usePerSeries = !usePerBar && seriesNames.length > 1 && options.chart_type !== 'pie';
+
+            // --- Per-bar handlers ---
+            const seriesThemeColor = getThemeColor(0);
+            const handleBarColor = (idx, newColor) => {
+              const newBarColors = barNames.map((_, i) =>
+                i === idx ? newColor : (options.bar_colors[i] || seriesThemeColor)
+              );
+              handleChange('bar_colors', newBarColors);
+            };
+            const handleResetBar = (idx) => {
+              const newBarColors = barNames.map((_, i) =>
+                i === idx ? seriesThemeColor : (options.bar_colors[i] || seriesThemeColor)
+              );
+              const allMatchTheme = newBarColors.every(c => c === seriesThemeColor);
+              handleChange('bar_colors', allMatchTheme ? [] : newBarColors);
+            };
+
+            // --- Per-series handlers ---
+            const handleSeriesColor = (idx, newColor) => {
+              const newColors = seriesNames.map((_, i) =>
+                i === idx ? newColor : (options.colors[i] || getThemeColor(i))
+              );
+              handleChange('colors', newColors);
+            };
+            const handleResetSeries = (idx) => {
+              const newColors = seriesNames.map((_, i) =>
+                i === idx ? getThemeColor(i) : (options.colors[i] || getThemeColor(i))
+              );
+              const allMatchTheme = newColors.every((c, i) => c === getThemeColor(i));
+              handleChange('colors', allMatchTheme ? [] : newColors);
+            };
+
+            // --- Render per-bar ---
+            if (usePerBar) {
+              const hasCustomBarColors = options.bar_colors.length > 0;
+              return (
+                <>
+                  {hasCustomBarColors && (
+                    <div className="flex justify-end mb-2">
+                      <button
+                        onClick={() => handleChange('bar_colors', [])}
+                        className="text-xs text-gray-500 hover:text-red-500 transition-colors"
+                      >
+                        Reset all to theme
+                      </button>
+                    </div>
+                  )}
+                  {!hasCustomBarColors && (
+                    <p className="text-xs text-gray-500 mb-2">Click a swatch to set a custom color per bar.</p>
+                  )}
+                  <div className="space-y-2">
+                    {barNames.map((name, idx) => {
+                      const currentColor = options.bar_colors[idx] || seriesThemeColor;
+                      const isCustom = !!options.bar_colors[idx] && options.bar_colors[idx] !== seriesThemeColor;
+                      return (
+                        <div key={idx} className="flex items-center space-x-2">
+                          <input
+                            type="color"
+                            value={currentColor}
+                            onChange={(e) => handleBarColor(idx, e.target.value)}
+                            className="w-8 h-8 rounded border border-gray-300 cursor-pointer flex-shrink-0"
+                          />
+                          <span className="text-sm text-gray-700 flex-1 truncate" title={name}>{name}</span>
+                          <span className="text-xs text-gray-400 font-mono flex-shrink-0">{currentColor}</span>
+                          {isCustom && (
+                            <button
+                              onClick={() => handleResetBar(idx)}
+                              title="Reset to theme color"
+                              className="p-1 text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Click Generate to apply color changes.</p>
+                </>
+              );
+            }
+
+            // --- Render per-series ---
+            if (usePerSeries) {
+              const hasCustomColors = options.colors.length > 0;
+              return (
+                <>
+                  {hasCustomColors && (
+                    <div className="flex justify-end mb-2">
+                      <button
+                        onClick={() => handleChange('colors', [])}
+                        className="text-xs text-gray-500 hover:text-red-500 transition-colors"
+                      >
+                        Reset all to theme
+                      </button>
+                    </div>
+                  )}
+                  {!hasCustomColors && (
+                    <p className="text-xs text-gray-500 mb-2">Using theme colors. Click a swatch to override.</p>
+                  )}
+                  <div className="space-y-2">
+                    {seriesNames.map((name, idx) => {
+                      const currentColor = options.colors[idx] || getThemeColor(idx);
+                      const isCustom = !!options.colors[idx] && options.colors[idx] !== getThemeColor(idx);
+                      return (
+                        <div key={idx} className="flex items-center space-x-2">
+                          <input
+                            type="color"
+                            value={currentColor}
+                            onChange={(e) => handleSeriesColor(idx, e.target.value)}
+                            className="w-8 h-8 rounded border border-gray-300 cursor-pointer flex-shrink-0"
+                          />
+                          <span className="text-sm text-gray-700 flex-1 truncate" title={name}>{name}</span>
+                          <span className="text-xs text-gray-400 font-mono flex-shrink-0">{currentColor}</span>
+                          {isCustom && (
+                            <button
+                              onClick={() => handleResetSeries(idx)}
+                              title="Reset to theme color"
+                              className="p-1 text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            }
+
+            // --- Generic fallback: pie chart or no data ---
+            return (
+              <>
+                {options.colors.length === 0 && (
+                  <p className="text-xs text-gray-500 mb-2">Using theme colors. Add colors to override.</p>
+                )}
+                <div className="space-y-2">
+                  {options.colors.map((color, idx) => (
+                    <div key={idx} className="flex items-center space-x-2">
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(e) => {
+                          const newColors = [...options.colors];
+                          newColors[idx] = e.target.value;
+                          handleChange('colors', newColors);
+                        }}
+                        className="w-10 h-10 rounded border border-gray-300 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-600 font-mono">{color}</span>
+                      <button
+                        onClick={() => {
+                          const newColors = options.colors.filter((_, i) => i !== idx);
+                          handleChange('colors', newColors);
+                        }}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
                 <button
-                  onClick={() => {
-                    const newColors = options.colors.filter((_, i) => i !== idx);
-                    handleChange('colors', newColors);
-                  }}
-                  className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                  onClick={() => handleChange('colors', [...options.colors, '#2E86AB'])}
+                  className="mt-2 flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  <X className="h-4 w-4" />
+                  <Plus className="h-4 w-4" />
+                  <span>Add Color</span>
                 </button>
-              </div>
-            ))}
+              </>
+            );
+          })()}
+        </CollapsibleSection>
+
+        {/* Legend Location */}
+        <CollapsibleSection id="legend" title="Legend" isOpen={openSections.legend} onToggle={toggleSection}>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Position</label>
+            <select
+              value={options.legend_location}
+              onChange={(e) => handleChange('legend_location', e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="upper right">Upper right</option>
+              <option value="upper left">Upper left</option>
+              <option value="lower right">Lower right</option>
+              <option value="lower left">Lower left</option>
+              <option value="right">Right (outside)</option>
+              <option value="center">Center</option>
+              <option value="none">Hidden</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-2">
+              You can also drag the legend directly on the chart to reposition it.
+            </p>
           </div>
-          <button
-            onClick={() => handleChange('colors', [...options.colors, '#2E86AB'])}
-            className="mt-2 flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Color</span>
-          </button>
         </CollapsibleSection>
       </div>
     </div>

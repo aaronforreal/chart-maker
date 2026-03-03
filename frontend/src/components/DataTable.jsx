@@ -1,5 +1,5 @@
 /**
- * DataTable component to display Excel data.
+ * DataTable component to display Excel data preview (first 10 rows).
  */
 
 import { Table2 } from 'lucide-react';
@@ -7,7 +7,8 @@ import { Table2 } from 'lucide-react';
 export default function DataTable({ dataPreview }) {
   if (!dataPreview) return null;
 
-  const { columns, rows, total_rows, row_count } = dataPreview;
+  const { columns, rows, total_rows } = dataPreview;
+  const previewRows = rows.slice(0, 10);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -16,7 +17,7 @@ export default function DataTable({ dataPreview }) {
           <Table2 className="h-5 w-5 text-gray-600" />
           <h3 className="text-lg font-semibold text-gray-800">Data Preview</h3>
           <span className="text-sm text-gray-500">
-            (showing {row_count} of {total_rows} rows)
+            (showing {previewRows.length} of {total_rows} rows)
           </span>
         </div>
       </div>
@@ -36,7 +37,7 @@ export default function DataTable({ dataPreview }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {rows.map((row, rowIndex) => (
+            {previewRows.map((row, rowIndex) => (
               <tr key={rowIndex} className="hover:bg-gray-50">
                 {row.map((cell, cellIndex) => (
                   <td key={cellIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">

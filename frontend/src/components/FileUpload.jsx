@@ -2,11 +2,11 @@
  * FileUpload component with drag & drop support.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
 
-export default function FileUpload({ onFileUpload, isUploading, error }) {
+export default function FileUpload({ onFileUpload, isUploading, error, autoOpen, onPickerOpened }) {
   const onDrop = useCallback(
     (acceptedFiles) => {
       if (acceptedFiles && acceptedFiles.length > 0) {
@@ -16,15 +16,23 @@ export default function FileUpload({ onFileUpload, isUploading, error }) {
     [onFileUpload]
   );
 
-  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, fileRejections, open } = useDropzone({
     onDrop,
     accept: {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.ms-excel.sheet.macroEnabled.12': ['.xlsm'],
     },
     maxFiles: 1,
     disabled: isUploading,
   });
+
+  useEffect(() => {
+    if (autoOpen) {
+      open();
+      onPickerOpened?.();
+    }
+  }, [autoOpen]);
 
   return (
     <div className="w-full">
@@ -58,7 +66,7 @@ export default function FileUpload({ onFileUpload, isUploading, error }) {
                 </p>
                 <p className="text-sm text-gray-500 mt-1">or click to browse</p>
               </div>
-              <p className="text-xs text-gray-400">Supports .xlsx and .xls files</p>
+              <p className="text-xs text-gray-400">Supports .xlsx, .xls, and .xlsm files</p>
             </>
           )}
         </div>
@@ -80,7 +88,7 @@ export default function FileUpload({ onFileUpload, isUploading, error }) {
         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-sm font-medium text-yellow-800">Invalid file</p>
           <p className="text-sm text-yellow-700 mt-1">
-            Please upload a valid Excel file (.xlsx or .xls)
+            Please upload a valid Excel file (.xlsx, .xls, or .xlsm)
           </p>
         </div>
       )}

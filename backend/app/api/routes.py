@@ -12,11 +12,12 @@ from fastapi.responses import FileResponse, Response
 
 from app.models.schemas import (
     ChartRequest,
+    ChartDataRequest,
+    ChartDataResponse,
     ChartResponse,
     UploadResponse,
-    ThemesResponse,
-    ErrorResponse,
-    DataPreview
+    DataPreview,
+    SectionPreview
 )
 from app.services.chart_service import ChartService
 
@@ -41,10 +42,10 @@ async def upload_file(file: UploadFile = File(...)):
         UploadResponse with file_id and data preview
     """
     # Validate file type
-    if not file.filename.endswith(('.xlsx', '.xls')):
+    if not file.filename.endswith(('.xlsx', '.xls', '.xlsm')):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file type. Only .xlsx and .xls files are supported."
+            detail="Invalid file type. Only .xlsx, .xls, and .xlsm files are supported."
         )
 
     # Generate unique file ID
@@ -66,13 +67,38 @@ async def upload_file(file: UploadFile = File(...)):
     # Read and preview data
     try:
         chart_service = ChartService()
-        df = chart_service.read_excel(str(file_path))
+
+        # Detect all sections in the file
+        raw_sections = chart_service._detect_all_sections(str(file_path))
+
+        # Read the first section (or whole sheet for single-section files)
+        if len(raw_sections) > 1:
+            section_previews = []
+            for i, s in enumerate(raw_sections):
+                section_df = chart_service.read_excel_section(str(file_path), section_index=i)
+                section_data = chart_service.get_data_preview(section_df)
+                section_previews.append(SectionPreview(
+                    index=i,
+                    title=s['title'],
+                    row_count=len(s['data_rows']),
+                    data_start=s['data_start'],
+                    data_end=s['data_end'],
+                    columns=section_data['columns'],
+                    rows=section_data['rows'],
+                ))
+            df = chart_service.read_excel_section(str(file_path), section_index=0)
+        else:
+            section_previews = []
+            df = chart_service.read_excel(str(file_path))
+
         data_preview = chart_service.get_data_preview(df)
 
         return UploadResponse(
             file_id=file_id,
             filename=file.filename,
             data_preview=DataPreview(**data_preview),
+            extracted_title=chart_service.extracted_title,
+            sections=section_previews,
             message="File uploaded successfully"
         )
     except Exception as e:
@@ -82,6 +108,44 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to read Excel file: {str(e)}"
+        )
+
+
+@router.post("/chart-data", response_model=ChartDataResponse)
+async def get_chart_data(request: ChartDataRequest):
+    """
+    Generate Plotly-compatible chart data from an uploaded Excel file.
+
+    Returns traces and layout objects for client-side rendering with Plotly.js.
+    """
+    file_path = None
+    for ext in ['.xlsx', '.xls', '.xlsm']:
+        potential_path = UPLOAD_DIR / f"{request.file_id}{ext}"
+        if potential_path.exists():
+            file_path = potential_path
+            break
+
+    if not file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"File with ID {request.file_id} not found. Please upload the file first."
+        )
+
+    try:
+        chart_service = ChartService(theme=request.theme)
+        traces, layout, resolved_type, columns = chart_service.build_plotly_data(
+            str(file_path), request.model_dump()
+        )
+        return ChartDataResponse(
+            traces=traces,
+            layout=layout,
+            chart_type=resolved_type,
+            columns=columns,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate chart data: {str(e)}"
         )
 
 
@@ -98,7 +162,7 @@ async def generate_chart(request: ChartRequest):
     """
     # Find uploaded file
     file_path = None
-    for ext in ['.xlsx', '.xls']:
+    for ext in ['.xlsx', '.xls', '.xlsm']:
         potential_path = UPLOAD_DIR / f"{request.file_id}{ext}"
         if potential_path.exists():
             file_path = potential_path
@@ -220,7 +284,7 @@ async def download_chart(
     """
     # Find uploaded file
     file_path = None
-    for ext in ['.xlsx', '.xls']:
+    for ext in ['.xlsx', '.xls', '.xlsm']:
         potential_path = UPLOAD_DIR / f"{file_id}{ext}"
         if potential_path.exists():
             file_path = potential_path
@@ -323,7 +387,7 @@ async def cleanup_file(file_id: str):
     deleted_files = []
 
     # Delete uploaded file
-    for ext in ['.xlsx', '.xls']:
+    for ext in ['.xlsx', '.xls', '.xlsm']:
         upload_path = UPLOAD_DIR / f"{file_id}{ext}"
         if upload_path.exists():
             upload_path.unlink()

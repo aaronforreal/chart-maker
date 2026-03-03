@@ -32,6 +32,9 @@ ENV/
 *.swo
 *~
 
+# Claude Code local settings
+.claude/
+
 # Output files
 output/*
 !output/.gitkeep
@@ -50,8 +53,9 @@ frontend/.env.local
 .DS_Store
 Thumbs.db
 
-# Project proposal
+# Project files
 PROJECT_PROPOSAL.md
+CLICKUP_PROJECT_PLAN.md
 
 # Temporary files
 *.tmp
